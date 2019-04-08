@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+{% load static %}
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, minimum-scale=1">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+{#    <meta http-equiv="X-Frame-Options" content="SAMEORIGIN">#}
+  <title>Document</title>
+  <link rel="stylesheet" href="{% static 'css/jquery.mobile-1.4.5.css' %}">
+  <link rel="stylesheet" href="{% static 'css/answer.css' %}">
+  <script src="{% static 'js/jquery.min.js' %}"></script>
+  <script src="{% static 'js/jquery.mobile-1.4.5.js' %}"></script>
+</head>
+<body>
+  <script>
+    var docEl = document.documentElement,
+    resizeEvt = 'orientationchange' in window ? 'orientationchange' : 'resize';
+    var clientWidth = docEl.clientWidth;
+    docEl.style.fontSize = 10 * (clientWidth / 760) + 'px';
+    window.addEventListener(resizeEvt, function() { clientWidth = docEl.clientWidth;docEl.style.fontSize = 10 * (clientWidth / 760) + 'px'; }, false);
+  </script>
+
+  <div data-role="page" id="page">
+    <!-- 头部 -->
+    <div data-role="header" id="header">
+      <h1><a href="#" onClick="stu_close()">&lt</a> 答题</h1>
+    </div>
+    <!-- 内容 -->
+    <div data-role="main" class="ui-content" id="answerBox">
+    <div class="problem">
+      <h5>{{data.type}}</h5>
+      <div class="ui-grid-solo">
+        <div class="ui-block-a">
+          <img src="/static/{{data.img}}" alt="">
+        </div>
+      </div>
+    </div>
+    <div class="answer">
+        <h5>答题卡</h5>
+        <!-- 选择题 -->
+        <ul class="choice">
+            {% for da in data.option%}
+                <li>{{ da }}</li>
+            {% endfor %}
+        </ul>
+        <!-- 判断题 -->
+        <form class="judge">
+          <input type="radio" name="hh" value="正确" checked>&nbsp;&nbsp;正确&nbsp;&nbsp;&nbsp;&nbsp;
+          <input type="radio" name="hh" value="错误">&nbsp;&nbsp;错误
+        </form>
+        <!-- 填空题 -->
+        <div class="completion">
+          <form>
+            {% for da in data.optionsnum%}
+              <input type="text" name="text"><br><br>
+            {% endfor %}
+          </form>
+        </div>
+        <!-- 简答题 -->
+        <div class="short">
+          <textarea cols="30" rows="5"></textarea>
+        </div>
+    </div>
+    <div class="analysis">
+        <div class="answers">
+            <img src="{% static 'img/answer/答案.png' %}" alt="">
+            <span>正确答案:</span>&nbsp;
+            <span class="req"></span>
+        </div>
+    </div>
+  </div>
+    <div class="submit">
+      <button>提交</button>
+    </div>
+  </div>
+
+  <script>
+    
+    var node = '';
+
+    if('{{data.type}}' == '选择题'){
+        $('.choice').show();
+        // 选择题
+        $('.answer ul').on('tap','li',function(){
+          $(this).addClass('selection').siblings().removeClass('selection');
+          if($(this).hasClass('selection')){
+              node = $(this).html();
+            }
+        });
+      }else if('{{data.type}}' == '判断题'){
+        $('.judge').show();
+      }else if('{{data.type}}' == '填空题'){
+        $('.completion').show();
+      }else if('{{data.type}}' == '简答题'){
+        $('.short').show();
+      }
+      
+      // 点击提交按钮
+      $('button').click(function () {
+        $('button').hide();
+
+        // 填空题
+        if('{{data.type}}' == '填空题'){
+          node = {};
+          var inputs = $('form').serializeArray();
+          var n=0;
+          $.each(inputs, function () {
+              node[n+1] = this.value;
+              n++;
+          });
+          // console.log(JSON.stringify(d))
+        } 
+        // 判断题
+        if('{{data.type}}' == '判断题'){
+          node = $('.judge input[name="hh"]:checked').val();        
+        }
+        // 简答题
+        if('{{data.type}}' == '简答题'){
+          node = $('textarea').val();
+        }
+        
+        console.log(node);
+
+        $.ajax({
+          url: "{% url 'answers:answer' %}",
+          {#contentType: 'application/json',#}
+          type: 'post',
+          dataType: 'json',
+          data: { answer:node,problemid:{{ data.problemid }}},
+          success:function(data){
+              console.log(data)
+          }
+      });
+    });
+
+    // 获取老师传过来的答案并显示
+    var ws = new WebSocket('ws://{{ ip }}:8083/student');
+    ws.onopen = function(){
+      console.log('已打开');
+    };
+    ws.onmessage = function(evt){
+      $('.analysis').show();
+      $('.analysis .req').text(evt.data);
+    };
+  </script>
+  <script>
+
+    function stu_close(){
+    if (confirm("您确定要关闭本页吗？")){
+      window.opener=null;
+      window.open('','_self');
+      window.close();
+      }
+    }
+  </script>
+</body>
+
+</html>
